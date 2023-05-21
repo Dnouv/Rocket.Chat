@@ -1,9 +1,10 @@
 import { Random } from '@rocket.chat/random';
 import { UserBridge } from '@rocket.chat/apps-engine/server/bridges/UserBridge';
+import type { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 import type { IUserCreationOptions, IUser, UserType } from '@rocket.chat/apps-engine/definition/users';
 import { Subscriptions, Users } from '@rocket.chat/models';
 import { Presence } from '@rocket.chat/core-services';
-import type { UserStatus } from '@rocket.chat/core-typings';
+import type { ISubscription, UserStatus } from '@rocket.chat/core-typings';
 
 import { setUserAvatar, deleteUser, getUserCreatedByApp } from '../../../lib/server/functions';
 import { checkUsernameAvailability } from '../../../lib/server/functions/checkUsernameAvailability';
@@ -151,5 +152,14 @@ export class AppUserBridge extends UserBridge {
 
 	protected async getUserUnreadMessageCount(uid: string): Promise<number> {
 		return Subscriptions.getBadgeCount(uid);
+	}
+
+	protected async getUserRoomIds(uid: string): Promise<Array<IRoom['id']>> {
+		console.log('me called', uid);
+		const userRoomsIds = (await Subscriptions.findByUserId(uid, { projection: { rid: 1 } }).toArray()).map(
+			(item: Pick<ISubscription, 'rid'>) => item.rid,
+		);
+
+		return userRoomsIds;
 	}
 }

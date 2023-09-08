@@ -4,7 +4,7 @@ import { RoomType } from '@rocket.chat/apps-engine/definition/rooms';
 import type { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { RoomBridge } from '@rocket.chat/apps-engine/server/bridges/RoomBridge';
 import type { ISubscription, IUser as ICoreUser, IRoom as ICoreRoom } from '@rocket.chat/core-typings';
-import { Subscriptions, Users, Rooms } from '@rocket.chat/models';
+import { Subscriptions, Users, Rooms, Messages } from '@rocket.chat/models';
 
 import type { AppServerOrchestrator } from '../../../../ee/server/apps/orchestrator';
 import { createDirectMessage } from '../../../../server/methods/createDirectMessage';
@@ -34,6 +34,33 @@ export class AppRoomBridge extends RoomBridge {
 			default:
 				throw new Error('Only channels, private groups and direct messages can be created.');
 		}
+	}
+
+	protected async getMessages(
+		roomId: string,
+		appId: string,
+		options: Partial<{
+			limit: number;
+			skip: number;
+			fields: Record<string, 0 | 1>;
+			sort: Record<string, 1 | -1>;
+		}>,
+	): Promise<Array<IMessage>> {
+		this.orch.debugLog(`The App ${appId} is getting the messages of the room: "${roomId}"`);
+
+		const { limit = 100, skip, fields, sort } = options;
+
+		const queryOptions = {
+			limit: Math.min(limit, 100),
+			skip,
+			fields,
+			sort,
+		};
+
+		const messages = await Messages.findVisibleByRoomId(roomId, queryOptions).toArray();
+		console.log('messages', messages);
+
+		return messages.map((message) => this.orch.getConverters()?.get('messages').convertMessage(message));
 	}
 
 	private prepareExtraData(room: Record<string, any>): Record<string, unknown> {
